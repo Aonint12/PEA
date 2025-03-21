@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>บันทึกการแก้ไฟฟ้าขัดข้อง กฟส.วัดสิงห์</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="https://github.com/Aonint12/images/PEA114.png">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        .button-container { display: flex; justify-content: center; gap: 1rem; margin: 1rem 0; }
+        #newRecordBtn { background-color: #10B981; color: white; }
+        #newRecordBtn:hover { background-color: #059669; }
+        #dashboardBtn { background-color: #8B5CF6; color: white; }
+        #dashboardBtn:hover { background-color: #7C3AED; }
+        #backToListBtn, #backToRecordsBtn { background-color: #3B82F6; color: white; }
+        #backToListBtn:hover, #backToRecordsBtn:hover { background-color: #1D4ED8; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .notification-bell { position: relative; display: inline-block; }
+        .notification-bell .badge { position: absolute; top: -5px; right: -10px; background-color: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; }
+        .equipment-left { white-space: pre-line; }
+        .mobile-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); margin-bottom: 15px; }
+        .mobile-card div { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .mobile-card label { font-weight: bold; color: #555; }
+        .mobile-card .value { color: #333; }
+        .mobile-action-btn { width: 100%; font-size: 14px; }
+        .property-btn { padding: 8px; font-size: 14px; }
+        .property-btn svg { height: 16px; width: 16px; }
+        @media (max-width: 767px) { .table-container { display: none; } .mobile-card-container { display: block; } .container-fluid { padding: 10px; } .text-xl { font-size: 18px; } .text-2xl { font-size: 20px; } }
+        @media (min-width: 768px) { .mobile-card-container { display: none; } }
+        .dashboard-header { background-color: #003399; color: white; padding: 15px 0; margin-bottom: 20px; }
+        .card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; transition: transform 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        .card-header { background-color: #4682B4; color: white; border-radius: 10px 10px 0 0 !important; font-weight: bold; }
+        .stat-card { text-align: center; padding: 15px; cursor: pointer; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #003399; }
+        .stat-label { color: #6c757d; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .filter-section { background-color: #f1f1f1; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .table-responsive { max-height: 400px; overflow-y: auto; }
+        .table th { position: sticky; top: 0; background-color: #4682B4; color: white; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 p-2 md:p-4">
+    <div id="loading" class="loader hidden"></div>
+
+    <!-- หน้าแสดงรายการ -->
+    <div id="listPage" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-xl md:text-2xl font-bold">รายการบันทึกการแก้ไฟฟ้าขัดข้อง กฟส.วัดสิงห์</h1>
+            <div class="flex items-center space-x-4">
+                <div class="notification-bell">
+                    <i class="fas fa-bell text-2xl text-gray-600"></i>
+                    <span id="pendingCount" class="badge">0</span>
+                </div>
+                <span id="usernameDisplay" class="text-gray-700 font-medium hidden"></span>
+                <button id="loginBtn" class="bg-green-500 text-white py-1 px-3 rounded hover:bg-green-600">
+                    <i class="fas fa-lock mr-2"></i>ล็อกอิน
+                </button>
+                <button id="logoutBtn" class="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600 hidden">
+                    <i class="fas fa-sign-out-alt mr-2"></i>ออกจากระบบ
+                </button>
+            </div>
+        </div>
+        <div class="button-container">
+            <button id="newRecordBtn" class="btn bg-green-600 text-white hover:bg-green-700 transition duration-300 rounded-lg px-4 py-2"></button>
+            <button id="dashboardBtn" class="btn bg-purple-600 text-white hover:bg-purple-700 transition duration-300 rounded-lg px-4 py-2">
+                <i class="fas fa-chart-bar mr-2"></i>ดูแดชบอร์ด
+            </button>
+        </div>
+        <div class="mb-4 flex flex-col md:flex-row md:items-center md:space-x-4 space-y-2 md:space-y-0">
+            <div class="flex items-center space-x-2">
+                <label for="recordLimit" class="text-gray-700">จำนวนรายการต่อหน้า:</label>
+                <select id="recordLimit" class="border rounded p-2">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100" selected>100</option>
+                    <option value="all">ทั้งหมด</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <label for="dateRange" class="text-gray-700">ช่วงวันที่ (วัน):</label>
+                <input id="dateRange" class="border rounded p-2" placeholder="เลือกช่วงวันที่">
+            </div>
+            <div class="flex items-center space-x-2">
+                <label for="monthRange" class="text-gray-700">ช่วงวันที่ (เดือน):</label>
+                <input id="monthRange" class="border rounded p-2" placeholder="เลือกช่วงเดือน">
+            </div>
+            <div class="flex items-center space-x-2">
+                <label class="text-gray-700">กรองตามอุปกรณ์ป้องกัน:</label>
+                <select id="filterProtectionType" class="border rounded p-2">
+                    <option value="">เลือกประเภท</option>
+                    <option value="หม้อแปลง">หม้อแปลง</option>
+                    <option value="ดรอฟเอาร์ฟิวส์">ดรอฟเอาร์ฟิวส์</option>
+                    <option value="เบรกเกอร์">เบรกเกอร์</option>
+                </select>
+                <select id="filterProtectionValue" class="border rounded p-2 hidden"></select>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="table table-striped table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ลำดับ</th>
+                        <th>วัน/เดือน/ปี</th>
+                        <th>สถานที่</th>
+                        <th>เวลาไฟดับ</th>
+                        <th>เวลาจ่ายไฟ</th>
+                        <th>เวลาถึงสำนักงาน</th>
+                        <th>อุปกรณ์ป้องกัน</th>
+                        <th>เฟส</th>
+                        <th>สภาพอากาศ</th>
+                        <th>หมายเหตุ</th>
+                        <th>ผู้ปฏิบัติงาน</th>
+                        <th>อุปกรณ์ที่ใช้</th>
+                        <th>สาเหตุ</th>
+                        <th>เลขใบสั่ง</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsTable"></tbody>
+            </table>
+        </div>
+        <div class="mobile-card-container" id="mobileRecords"></div>
+    </div>
+
+    <!-- หน้าฟอร์มบันทึก -->
+    <div id="formPage">
+        <h1 class="text-2xl font-bold text-center mb-6">บันทึกการแก้ไฟฟ้าขัดข้อง กฟส.วัดสิงห์</h1>
+        <div class="button-container">
+            <button id="backToListBtn" class="btn bg-blue-600 text-white hover:bg-blue-700 transition duration-300 rounded-lg px-4 py-2"></button>
+        </div>
+        <form id="powerOutageForm" class="space-y-4">
+            <div>
+                <label class="block mb-2 font-medium">วันที่เกิดเหตุ <span class="text-red-500">*</span></label>
+                <input type="date" id="incidentDate" required class="w-full border rounded p-2">
+                <div id="incidentDateThai" class="text-sm text-gray-600 mt-1"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block mb-2">เวลาไฟดับ/ออกสำนักงาน <span class="text-red-500">*</span></label>
+                    <input type="time" id="outageStartTime" required class="w-full border rounded p-2">
+                </div>
+                <div>
+                    <label class="block mb-2">เวลาจ่ายไฟ <span class="text-red-500">*</span></label>
+                    <input type="time" id="powerRestoreTime" required class="w-full border rounded p-2">
+                </div>
+            </div>
+            <div>
+                <label class="block mb-2">เวลากลับถึงสำนักงาน <span class="text-red-500">*</span></label>
+                <input type="time" id="officeReturnTime" required class="w-full border rounded p-2">
+            </div>
+            <div>
+                <label class="block mb-2 font-medium">หมายเหตุ <span class="text-red-500">*</span></label>
+                <div class="grid grid-cols-2 gap-3 mb-2">
+                    <button type="button" class="property-btn rounded-lg border-2 border-gray-300 hover:bg-blue-100 text-gray-700" data-value="ทรัพย์สิน กฟภ.">
+                        <div class="flex items-center justify-center">
+                            <svg class="h-5 w-5 mr-1 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            ทรัพย์สิน กฟภ.
+                        </div>
+                    </button>
+                    <button type="button" class="property-btn rounded-lg border-2 border-gray-300 hover:bg-blue-100 text-gray-700" data-value="ทรัพย์สินผู้ใช้ไฟ">
+                        <div class="flex items-center justify-center">
+                            <svg class="h-5 w-5 mr-1 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            ทรัพย์สินผู้ใช้ไฟ
+                        </div>
+                    </button>
+                </div>
+                <input type="hidden" id="notes" name="notes" required>
+            </div>
+            <div>
+                <label class="block mb-2">อุปกรณ์ป้องกัน <span class="text-red-500">*</span></label>
+                <select id="protectionEquipment" name="protectionEquipment" required class="w-full border rounded p-2" onchange="onProtectionEquipmentChange()">
+                    <option value="">เลือกอุปกรณ์ป้องกัน</option>
+                </select>
+                <div id="transformerPEAContainer" class="hidden mt-2">
+                    <label class="block mb-2">รหัส <span class="text-red-500">*</span></label>
+                    <div class="flex items-center space-x-2">
+                        <select id="transformerPEA" name="transformerPEA" class="w-full border rounded p-2"></select>
+                        <button type="button" id="addNewTransformerBtn" class="bg-green-500 text-white py-1 px-3 rounded hover:bg-green-600">
+                            <i class="fas fa-plus mr-1"></i>เพิ่มใหม่
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block mb-2">สถานที่ไฟดับ <span class="text-red-500">*</span></label>
+                <input type="text" id="location" name="location" required class="w-full border rounded p-2">
+            </div>
+            <div id="transformerSizeContainer" class="hidden">
+                <label class="block mb-2">ขนาดหม้อแปลง</label>
+                <input type="text" id="transformerSize" name="transformerSize" class="w-full border rounded p-2" readonly>
+            </div>
+            <div>
+                <label class="block mb-2">อุปกรณ์ที่ใช้ <span class="text-red-500">*</span></label>
+                <div id="equipmentContainer">
+                    <div class="equipment-row space-y-2 mb-2">
+                        <div class="flex flex-col sm:flex-row sm:space-x-2">
+                            <select class="equipment-type border rounded p-2 flex-grow" name="equipmentType[]" required>
+                                <option value="">เลือกอุปกรณ์</option>
+                            </select>
+                            <input type="number" class="equipment-quantity border rounded p-2 w-full sm:w-24" name="equipmentQuantity[]" placeholder="จำนวน" min="0" required>
+                            <button type="button" class="remove-equipment bg-red-500 text-white p-2 rounded hidden">ลบ</button>
+                        </div>
+                        <div class="equipment-other-container hidden flex flex-col sm:flex-row sm:space-x-2">
+                            <input type="text" class="equipment-other border rounded p-2 flex-grow" name="equipmentOther[]" placeholder="ระบุอุปกรณ์อื่นๆ" required>
+                            <input type="number" class="equipment-other-quantity border rounded p-2 w-full sm:w-24" name="equipmentOtherQuantity[]" placeholder="จำนวน" min="0" required>
+                            <input type="text" class="equipment-other-unit border rounded p-2 w-full sm:w-24" name="equipmentOtherUnit[]" placeholder="หน่วย" required>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="addEquipment" class="mt-2 bg-green-500 text-white p-2 rounded">เพิ่มอุปกรณ์</button>
+            </div>
+            <div>
+                <label class="block mb-2">สาเหตุ <span class="text-red-500">*</span></label>
+                <select id="cause" name="cause" required class="w-full border rounded p-2">
+                    <option value="">เลือกสาเหตุ</option>
+                </select>
+                <input type="text" id="causeOther" name="causeOther" class="w-full border rounded p-2 mt-2 hidden" placeholder="ระบุสาเหตุอื่นๆ">
+            </div>
+            <div>
+                <label class="block mb-2">เฟส <span class="text-red-500">*</span></label>
+                <div class="flex space-x-2">
+                    <button type="button" class="phase-btn border rounded p-2 hover:bg-blue-100" data-phase="A">เฟส A</button>
+                    <button type="button" class="phase-btn border rounded p-2 hover:bg-blue-100" data-phase="B">เฟส B</button>
+                    <button type="button" class="phase-btn border rounded p-2 hover:bg-blue-100" data-phase="C">เฟส C</button>
+                </div>
+                <input type="hidden" id="selectedPhases" name="selectedPhases" required>
+            </div>
+            <div>
+                <label class="block mb-2">สภาพอากาศ <span class="text-red-500">*</span></label>
+                <select id="weatherCondition" name="weatherCondition" required class="w-full border rounded p-2">
+                    <option value="">เลือกสภาพอากาศ</option>
+                    <option value="ปกติ">ปกติ</option>
+                    <option value="ฝนตก">ฝนตก</option>
+                    <option value="คลึ้ม">คลึ้ม</option>
+                    <option value="ลมแรง">ลมแรง</option>
+                    <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+                <input type="text" id="weatherOther" name="weatherOther" class="w-full border rounded p-2 mt-2 hidden" placeholder="ระบุสภาพอากาศอื่นๆ">
+            </div>
+            <div>
+                <label class="block mb-2">ผู้ปฏิบัติงาน <span class="text-red-500">*</span></label>
+                <select id="operator" name="operator" required class="w-full border rounded p-2">
+                    <option value="">เลือกผู้ปฏิบัติงาน</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-blue-500 text-white py-3 rounded hover:bg-blue-600">
+                บันทึกข้อมูล
+            </button>
+        </form>
+    </div>
+
+    <!-- หน้า Dashboard -->
+<div id="dashboardPage" class="hidden">
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fas fa-bolt"></i> แดชบอร์ดสถิติไฟฟ้าขัดข้อง</h1>
+                <span>กฟส.วัดสิงห์</span>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="button-container">
+            <button id="backToRecordsBtn" class="btn bg-blue-600 text-white hover:bg-blue-700 transition duration-300 rounded-lg px-4 py-2">
+                <i class="fas fa-list-alt mr-2"></i>กลับไปหน้ารายงาน
+            </button>
+        </div>
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <label for="dashDateRange">ช่วงวันที่ (วัน)</label>
+                    <input id="dashDateRange" class="form-control" placeholder="เลือกช่วงวันที่">
+                </div>
+                <div class="col-md-6 mb-2">
+                    <label for="dashMonthRange">ช่วงวันที่ (เดือน)</label>
+                    <input id="dashMonthRange" class="form-control" placeholder="เลือกช่วงเดือน">
+                </div>
+                <div class="col-md-6 d-flex align-items-end mb-2">
+                    <button id="dashApplyFilter" class="btn btn-primary w-100"><i class="fas fa-filter"></i> กรองข้อมูล</button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card" id="totalIncidentsCard">
+                    <div class="card-body">
+                        <div id="totalIncidents" class="stat-value">0</div>
+                        <div class="stat-label">จำนวนเหตุการณ์ทั้งหมด</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div id="dropFuseIssues" class="stat-value">0</div>
+                        <div class="stat-label">ปัญหาที่ดรอฟเอาร์ฟิวส์</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div id="breakerIssues" class="stat-value">0</div>
+                        <div class="stat-label">ปัญหาที่เบรกเกอร์</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card" id="transformerIssuesCard">
+                    <div class="card-body">
+                        <div id="transformerIssues" class="stat-value">0</div>
+                        <div class="stat-label">ปัญหาที่หม้อแปลง</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card" id="pendingOrdersCard">
+                    <div class="card-body">
+                        <div id="pendingOrders" class="stat-value">0</div>
+                        <div class="stat-label">รายการที่รอใบสั่ง</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-chart-pie me-2"></i>สาเหตุของไฟฟ้าขัดข้อง</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="causeChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-chart-bar me-2"></i>อุปกรณ์ป้องกัน</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="protectionChart"></canvas></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-chart-bar me-2"></i>อุปกรณ์ที่ใช้ (จำนวนชิ้น)</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="usedEquipmentChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-chart-bar me-2"></i>เฟสที่เกิดเหตุ</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="phaseChart"></canvas></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-chart-bar me-2"></i>สภาพอากาศ</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="weatherChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-chart-bar me-2"></i>หมายเหตุ</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="notesChart"></canvas></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-table me-2"></i>รายการไฟฟ้าขัดข้องล่าสุด</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ลำดับ</th>
+                                        <th>วันที่</th>
+                                        <th>เวลาไฟดับ</th>
+                                        <th>เวลาจ่ายไฟ</th>
+                                        <th>สถานที่</th>
+                                        <th>อุปกรณ์ป้องกัน</th>
+                                        <th>สาเหตุ</th>
+                                        <th>ผู้ปฏิบัติงาน</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="incidentsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+    const listPage = document.getElementById('listPage');
+    const formPage = document.getElementById('formPage');
+    const dashboardPage = document.getElementById('dashboardPage');
+    const loading = document.getElementById('loading');
+    const pendingCountElement = document.getElementById('pendingCount');
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    const incidentDateInput = document.getElementById('incidentDate');
+    const incidentDateThai = document.getElementById('incidentDateThai');
+    let isLoggedIn = false;
+    let loggedInBranch = null;
+    let loggedInUsername = '';
+    let hasShownPendingAlert = false;
+    let dashboardData = [];
+    let causeChart, protectionChart, usedEquipmentChart, phaseChart, weatherChart, notesChart;
+
+    // ฟังก์ชันช่วยสำหรับการจัดรูปแบบวันที่และเวลา (ต้องมีในโค้ดก่อนหน้า Dashboard Functions)
+function formatThaiDateShort(date) {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear() + 543;
+    return `${day}/${month}/${year}`;
+}
+
+function formatTime(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+    function calculateDuration(start, end) {
+        if (!start || !end) return null;
+        const startTime = new Date(start);
+        const endTime = new Date(end);
+        const diffInMinutes = Math.round((endTime - startTime) / (1000 * 60));
+        return diffInMinutes;
+    }
+
+    function resetForm() {
+        const form = document.getElementById('powerOutageForm');
+        form.reset();
+        const today = new Date();
+        incidentDateInput.value = today.toISOString().split('T')[0];
+        incidentDateThai.textContent = formatThaiDateShort(today);
+        document.querySelectorAll('#equipmentContainer > .equipment-row:not(:first-child)').forEach(row => row.remove());
+        const firstEquipmentRow = document.querySelector('#equipmentContainer .equipment-row');
+        setupEquipmentRow(firstEquipmentRow);
+        document.getElementById('protectionEquipment').value = '';
+        document.getElementById('transformerPEAContainer').classList.add('hidden');
+        $('#transformerPEA').val(null).trigger('change');
+        document.getElementById('transformerSizeContainer').classList.add('hidden');
+        document.getElementById('transformerSize').value = '';
+        document.getElementById('location').value = '';
+        document.getElementById('notes').value = '';
+        document.querySelectorAll('.property-btn').forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+        document.querySelectorAll('.phase-btn').forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+        document.getElementById('selectedPhases').value = '';
+        document.getElementById('weatherOther').classList.add('hidden');
+        document.getElementById('weatherOther').value = '';
+        document.getElementById('causeOther').classList.add('hidden');
+        document.getElementById('causeOther').value = '';
+    }
+
+    incidentDateInput.addEventListener('change', function() {
+        const date = new Date(this.value);
+        incidentDateThai.textContent = this.value ? formatThaiDateShort(date) : '';
+    });
+
+    document.getElementById('newRecordBtn').addEventListener('click', () => {
+        listPage.classList.add('hidden');
+        dashboardPage.classList.add('hidden');
+        formPage.classList.remove('hidden');
+        resetForm();
+        loadOptions();
+    });
+
+    document.getElementById('backToListBtn').addEventListener('click', () => {
+        formPage.classList.add('hidden');
+        listPage.classList.remove('hidden');
+        fetchRecords();
+    });
+
+   document.getElementById('dashboardBtn').addEventListener('click', () => {
+    document.getElementById('listPage').classList.add('hidden');
+    document.getElementById('formPage').classList.add('hidden');
+    document.getElementById('dashboardPage').classList.remove('hidden');
+    loadDashboardData();
+});
+
+    document.getElementById('backToRecordsBtn').addEventListener('click', () => {
+    document.getElementById('dashboardPage').classList.add('hidden');
+    document.getElementById('listPage').classList.remove('hidden');
+    fetchRecords(); // ต้องมีฟังก์ชัน fetchRecords ในโค้ดหลัก
+});
+
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        Swal.fire({
+            title: 'กรุณากรอกรหัสผ่าน',
+            input: 'password',
+            inputLabel: 'รหัสผ่าน',
+            inputPlaceholder: 'กรอกรหัสผ่านที่นี่',
+            showCancelButton: true,
+            confirmButtonText: 'ล็อกอิน',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: (password) => {
+                if (!password) {
+                    Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
+                    return;
+                }
+                return google.script.run
+                    .withSuccessHandler(result => result)
+                    .checkPassword(password.trim());
+            }
+        }).then((result) => {
+            if (result.isConfirmed && result.value.success && result.value.isValid) {
+                isLoggedIn = true;
+                loggedInBranch = result.value.branch;
+                loggedInUsername = result.value.username;
+                document.getElementById('loginBtn').classList.add('hidden');
+                document.getElementById('logoutBtn').classList.remove('hidden');
+                usernameDisplay.textContent = `ผู้ใช้: ${loggedInUsername}`;
+                usernameDisplay.classList.remove('hidden');
+                formPage.classList.add('hidden');
+                listPage.classList.remove('hidden');
+                fetchRecords(null, true);
+                Swal.fire('สำเร็จ', `ล็อกอินสำเร็จ: ${loggedInUsername}`, 'success');
+            } else {
+                Swal.fire('ข้อผิดพลาด', result.value.message || 'รหัสผ่านไม่ถูกต้อง', 'error');
+            }
+        });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        isLoggedIn = false;
+        loggedInBranch = null;
+        loggedInUsername = '';
+        hasShownPendingAlert = false;
+        document.getElementById('loginBtn').classList.remove('hidden');
+        document.getElementById('logoutBtn').classList.add('hidden');
+        usernameDisplay.textContent = '';
+        usernameDisplay.classList.add('hidden');
+        listPage.classList.add('hidden');
+        dashboardPage.classList.add('hidden');
+        formPage.classList.remove('hidden');
+        Swal.fire('สำเร็จ', 'ออกจากระบบเรียบร้อย', 'success');
+    });
+
+    window.onload = function() {
+        formPage.classList.remove('hidden');
+        listPage.classList.add('hidden');
+        dashboardPage.classList.add('hidden');
+        loadOptions();
+        const today = new Date();
+        incidentDateInput.value = today.toISOString().split('T')[0];
+        incidentDateThai.textContent = formatThaiDateShort(today);
+        document.getElementById('newRecordBtn').innerHTML = '<i class="fas fa-plus-circle text-white mr-2"></i>เพิ่มบันทึกใหม่';
+        document.getElementById('backToListBtn').innerHTML = '<i class="fas fa-list-alt text-white mr-2"></i>ดูหน้ารายงาน';
+       flatpickr("#dashDateRange", { mode: "range", dateFormat: "Y-m-d" });
+    flatpickr("#dashMonthRange", { 
+        mode: "range", 
+        dateFormat: "F Y", 
+        plugins: [new monthSelectPlugin({ shorthand: true, dateFormat: "F Y", altFormat: "F Y" })],
+        locale: "th"
+    });
+};
+
+    function fetchRecords(limit = document.getElementById('recordLimit').value, isFirstLogin = false) {
+        loading.classList.remove('hidden');
+        const dateRange = document.getElementById('dateRange').value.split(' to ');
+        const monthRange = document.getElementById('monthRange').value.split(' to ');
+        const startDate = dateRange[0] ? new Date(dateRange[0]) : null;
+        const endDate = dateRange[1] ? new Date(dateRange[1]) : null;
+        const startMonth = monthRange[0] ? new Date(monthRange[0]) : null;
+        const endMonth = monthRange[1] ? new Date(monthRange[1]) : null;
+        const protectionType = document.getElementById('filterProtectionType').value;
+        const protectionValue = $('#filterProtectionValue').val();
+        const protectionFilter = protectionType ? { type: protectionType, value: protectionValue || null } : null;
+
+        google.script.run
+            .withSuccessHandler(response => {
+                loading.classList.add('hidden');
+                if (response.success) {
+                    let filteredRecords = response.records;
+                    if (startDate && endDate) {
+                        filteredRecords = filteredRecords.filter(r => {
+                            const date = new Date(r.outageStartTime);
+                            return date >= startDate && date <= endDate;
+                        });
+                    } else if (startMonth && endMonth) {
+                        filteredRecords = filteredRecords.filter(r => {
+                            const date = new Date(r.outageStartTime);
+                            return date >= startMonth && date <= new Date(endMonth.getFullYear(), endMonth.getMonth() + 1, 0);
+                        });
+                    }
+                    populateRecords(filteredRecords);
+                    pendingCountElement.textContent = response.pendingCount;
+                    if (isFirstLogin && response.pendingCount > 0 && isLoggedIn && !hasShownPendingAlert) {
+                        Swal.fire({
+                            title: 'แจ้งเตือน',
+                            text: `มี ${response.pendingCount} รายการที่ยังไม่ได้ลงเลขใบสั่ง`,
+                            icon: 'warning',
+                            confirmButtonText: 'ตกลง'
+                        });
+                        hasShownPendingAlert = true;
+                    }
+                } else {
+                    Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                    populateRecords([]);
+                    pendingCountElement.textContent = '0';
+                }
+            })
+            .withFailureHandler(error => {
+                loading.classList.add('hidden');
+                Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาด: ' + error.message, 'error');
+                populateRecords([]);
+                pendingCountElement.textContent = '0';
+            })
+            .getAllRecords(limit === 'all' ? null : parseInt(limit), null, null, protectionFilter);
+    }
+
+    function populateRecords(records) {
+        const tbody = document.getElementById('recordsTable');
+        const mobileContainer = document.getElementById('mobileRecords');
+        tbody.innerHTML = '';
+        mobileContainer.innerHTML = '';
+
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="14" class="text-center py-4">ยังไม่มีข้อมูล</td></tr>';
+            mobileContainer.innerHTML = '<div class="mobile-card"><div><label>ไม่มีข้อมูล</label></div></div>';
+            return;
+        }
+
+        records.forEach(record => {
+            const protectionDisplay = record.transformerPEA ? `${record.protectionEquipment} (${record.transformerPEA}${record.transformerSize ? ', ' + record.transformerSize : ''})` : record.protectionEquipment || '-';
+            const equipmentList = record.equipmentDetails ? record.equipmentDetails.split(', ').map((item, index) => `${index + 1}. ${item}`).join('\n') : '-';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${record.id}</td>
+                <td>${record.outageStartTime ? formatThaiDateShort(new Date(record.outageStartTime)) : '-'}</td>
+                <td>${record.location || '-'}</td>
+                <td>${record.outageStartTime ? new Date(record.outageStartTime).toLocaleTimeString('th-TH') : '-'}</td>
+                <td>${record.powerRestoreTime ? new Date(record.powerRestoreTime).toLocaleTimeString('th-TH') : '-'}</td>
+                <td>${record.officeReturnTime ? new Date(record.officeReturnTime).toLocaleTimeString('th-TH') : '-'}</td>
+                <td>${protectionDisplay}</td>
+                <td>${record.phase || '-'}</td>
+                <td>${record.weatherCondition || '-'}</td>
+                <td>${record.notes || '-'}</td>
+                <td>${record.operator || '-'}</td>
+                <td class="equipment-left">${equipmentList}</td>
+                <td>${record.cause || '-'}</td>
+                <td class="order-number-cell" data-id="${record.id}">
+                    ${record.orderNumber ? record.orderNumber : (isLoggedIn ? `<button class="btn btn-sm btn-primary edit-order-btn ms-2" data-id="${record.id}">เพิ่ม</button>` : '-')}
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            const card = document.createElement('div');
+            card.className = 'mobile-card';
+            card.innerHTML = `
+                <div><label><i class="fas fa-hashtag text-gray-600 mr-1"></i>#:</label> <span class="value">${record.id}</span></div>
+                <div><label><i class="fas fa-calendar-alt text-blue-600 mr-1"></i>วันที่:</label> <span class="value">${record.outageStartTime ? formatThaiDateShort(new Date(record.outageStartTime)) : '-'}</span></div>
+                <div><label><i class="fas fa-map-marker-alt text-red-600 mr-1"></i>สถานที่:</label> <span class="value">${record.location || '-'}</span></div>
+                <div><label><i class="fas fa-clock text-green-600 mr-1"></i>เวลาไฟดับ:</label> <span class="value">${record.outageStartTime ? new Date(record.outageStartTime).toLocaleTimeString('th-TH') : '-'}</span></div>
+                <div><label><i class="fas fa-plug text-yellow-600 mr-1"></i>เวลาจ่ายไฟ:</label> <span class="value">${record.powerRestoreTime ? new Date(record.powerRestoreTime).toLocaleTimeString('th-TH') : '-'}</span></div>
+                <div><label><i class="fas fa-building text-purple-600 mr-1"></i>เวลาถึงสำนักงาน:</label> <span class="value">${record.officeReturnTime ? new Date(record.officeReturnTime).toLocaleTimeString('th-TH') : '-'}</span></div>
+                <div><label><i class="fas fa-shield-alt text-indigo-600 mr-1"></i>อุปกรณ์ป้องกัน:</label> <span class="value">${protectionDisplay}</span></div>
+                <div><label><i class="fas fa-bolt text-orange-600 mr-1"></i>เฟส:</label> <span class="value">${record.phase || '-'}</span></div>
+                <div><label><i class="fas fa-cloud text-teal-600 mr-1"></i>สภาพอากาศ:</label> <span class="value">${record.weatherCondition || '-'}</span></div>
+                <div><label><i class="fas fa-sticky-note text-pink-600 mr-1"></i>หมายเหตุ:</label> <span class="value">${record.notes || '-'}</span></div>
+                <div><label><i class="fas fa-user text-cyan-600 mr-1"></i>ผู้ปฏิบัติงาน:</label> <span class="value">${record.operator || '-'}</span></div>
+                <div><label><i class="fas fa-tools text-gray-700 mr-1"></i>อุปกรณ์ที่ใช้:</label> <span class="value">${equipmentList.replace(/\n/g, '<br>')}</span></div>
+                <div><label><i class="fas fa-question-circle text-red-700 mr-1"></i>สาเหตุ:</label> <span class="value">${record.cause || '-'}</span></div>
+                <div><label><i class="fas fa-file-alt text-blue-700 mr-1"></i>เลขใบสั่ง:</label> <span class="value order-number-${record.id}">${record.orderNumber || '-'}</span></div>
+                ${isLoggedIn && !record.orderNumber ? `<button class="btn btn-primary mobile-action-btn edit-order-btn mt-2" data-id="${record.id}">เพิ่มเลขใบสั่ง</button>` : ''}
+            `;
+            mobileContainer.appendChild(card);
+        });
+
+        document.querySelectorAll('.edit-order-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const recordId = this.getAttribute('data-id');
+                Swal.fire({
+                    title: 'เพิ่มเลขใบสั่ง',
+                    input: 'text',
+                    inputLabel: 'กรุณากรอกเลขใบสั่ง',
+                    inputPlaceholder: 'เช่น 12345/2566',
+                    showCancelButton: true,
+                    confirmButtonText: 'บันทึก',
+                    cancelButtonText: 'ยกเลิก',
+                    preConfirm: (orderNumber) => {
+                        if (!orderNumber) {
+                            Swal.showValidationMessage('กรุณากรอกเลขใบสั่ง');
+                            return;
+                        }
+                        return orderNumber.trim();
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        loading.classList.remove('hidden');
+                        google.script.run
+                            .withSuccessHandler(response => {
+                                loading.classList.add('hidden');
+                                if (response.success) {
+                                    Swal.fire('สำเร็จ', response.message, 'success');
+                                    fetchRecords();
+                                } else {
+                                    Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                                }
+                            })
+                            .withFailureHandler(error => {
+                                loading.classList.add('hidden');
+                                Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาด: ' + error.message, 'error');
+                            })
+                            .updateOrderNumber(parseInt(recordId), result.value);
+                    }
+                });
+            });
+        });
+    }
+
+    function loadOptions() {
+        google.script.run
+            .withSuccessHandler(response => {
+                if (response.success) {
+                    window.optionsData = response;
+
+                    const protectionSelect = document.getElementById('protectionEquipment');
+                    protectionSelect.innerHTML = '<option value="">เลือกอุปกรณ์ป้องกัน</option>';
+                    response.protectionEquipment.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item;
+                        option.textContent = item;
+                        protectionSelect.appendChild(option);
+                    });
+
+                    const equipmentSelect = document.querySelector('.equipment-type');
+                    equipmentSelect.innerHTML = '<option value="">เลือกอุปกรณ์</option>';
+                    response.equipmentTypes.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item;
+                        option.textContent = item;
+                        option.dataset.unit = response.equipmentUnits[item];
+                        equipmentSelect.appendChild(option);
+                    });
+                    equipmentSelect.innerHTML += '<option value="อื่นๆ">อื่นๆ</option>';
+
+                    const transformerPEASelect = $('#transformerPEA');
+                    transformerPEASelect.select2({
+                        placeholder: "พิมพ์เพื่อค้นหา",
+                        allowClear: true,
+                        data: [],
+                        width: '100%'
+                    });
+                    transformerPEASelect.on('change', onTransformerPEAChange);
+
+                    const filterProtectionValueSelect = $('#filterProtectionValue');
+                    filterProtectionValueSelect.select2({
+                        placeholder: "เลือกหรือพิมพ์เพื่อค้นหา",
+                        allowClear: true,
+                        data: [],
+                        width: '100%'
+                    });
+                    filterProtectionValueSelect.on('change', () => fetchRecords());
+
+                    document.getElementById('filterProtectionType').addEventListener('change', function() {
+                        const type = this.value;
+                        filterProtectionValueSelect.empty();
+                        document.getElementById('filterProtectionValue').classList.add('hidden');
+                        if (type) {
+                            let data = [];
+                            if (type === 'หม้อแปลง') data = window.optionsData.transformerPEAs.map(item => ({ id: item, text: item }));
+                            else if (type === 'ดรอฟเอาร์ฟิวส์') data = window.optionsData.dropFuses.map(item => ({ id: item, text: item }));
+                            else if (type === 'เบรกเกอร์') data = window.optionsData.breakers.map(item => ({ id: item, text: item }));
+                            filterProtectionValueSelect.select2({ data: data, placeholder: "เลือกหรือพิมพ์เพื่อค้นหา", allowClear: true });
+                            document.getElementById('filterProtectionValue').classList.remove('hidden');
+                        }
+                        fetchRecords();
+                    });
+
+                    const operatorSelect = document.getElementById('operator');
+                    operatorSelect.innerHTML = '<option value="">เลือกผู้ปฏิบัติงาน</option>';
+                    response.operators.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item;
+                        option.textContent = item;
+                        operatorSelect.appendChild(option);
+                    });
+
+                    const causeSelect = document.getElementById('cause');
+                    causeSelect.innerHTML = '<option value="">เลือกสาเหตุ</option>';
+                    response.causes.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item;
+                        option.textContent = item;
+                        causeSelect.appendChild(option);
+                    });
+                    causeSelect.innerHTML += '<option value="อื่นๆ">อื่นๆ</option>';
+                } else {
+                    Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                }
+            })
+            .withFailureHandler(error => {
+                Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการโหลดตัวเลือก: ' + error.message, 'error');
+            })
+            .getOptions();
+    }
+
+    const propertyButtons = document.querySelectorAll('.property-btn');
+    const notesInput = document.getElementById('notes');
+    propertyButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            propertyButtons.forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+            this.classList.add('bg-blue-500', 'text-white');
+            notesInput.value = this.getAttribute('data-value');
+        });
+    });
+
+    const equipmentContainer = document.getElementById('equipmentContainer');
+    const addEquipmentBtn = document.getElementById('addEquipment');
+
+    function setupEquipmentRow(row) {
+        const typeSelect = row.querySelector('.equipment-type');
+        const quantityInput = row.querySelector('.equipment-quantity');
+        const otherContainer = row.querySelector('.equipment-other-container');
+        const otherInput = row.querySelector('.equipment-other');
+        const otherQuantityInput = row.querySelector('.equipment-other-quantity');
+        const otherUnitInput = row.querySelector('.equipment-other-unit');
+
+        typeSelect.value = '';
+        quantityInput.value = '';
+        otherInput.value = '';
+        otherQuantityInput.value = '';
+        otherUnitInput.value = '';
+        otherContainer.classList.add('hidden');
+        quantityInput.classList.remove('hidden');
+
+        typeSelect.addEventListener('change', function() {
+            if (this.value === 'อื่นๆ') {
+                otherContainer.classList.remove('hidden');
+                quantityInput.classList.add('hidden');
+                quantityInput.value = '';
+                otherInput.required = true;
+                otherQuantityInput.required = true;
+                otherUnitInput.required = true;
+            } else {
+                otherContainer.classList.add('hidden');
+                otherInput.value = '';
+                otherQuantityInput.value = '';
+                otherUnitInput.value = '';
+                quantityInput.classList.remove('hidden');
+                otherInput.required = false;
+                otherQuantityInput.required = false;
+                otherUnitInput.required = false;
+            }
+        });
+
+        const removeBtn = row.querySelector('.remove-equipment');
+        if (removeBtn) removeBtn.addEventListener('click', () => row.remove());
+        return row;
+    }
+
+    function createEquipmentRow() {
+        const row = equipmentContainer.firstElementChild.cloneNode(true);
+        const removeBtn = row.querySelector('.remove-equipment');
+        removeBtn.classList.remove('hidden');
+        return setupEquipmentRow(row);
+    }
+
+    addEquipmentBtn.addEventListener('click', () => equipmentContainer.appendChild(createEquipmentRow()));
+
+    function onProtectionEquipmentChange() {
+        const protectionEquipment = document.getElementById('protectionEquipment').value;
+        const transformerPEAContainer = document.getElementById('transformerPEAContainer');
+        const transformerSizeContainer = document.getElementById('transformerSizeContainer');
+        const transformerPEASelect = $('#transformerPEA');
+
+        transformerPEASelect.empty();
+        if (protectionEquipment) {
+            transformerPEAContainer.classList.remove('hidden');
+            document.getElementById('transformerPEA').required = true;
+            let data = [];
+            if (protectionEquipment === 'หม้อแปลง') {
+                data = window.optionsData.transformerPEAs.map(item => ({ id: item, text: item }));
+                transformerSizeContainer.classList.remove('hidden');
+            } else if (protectionEquipment === 'ดรอฟเอาร์ฟิวส์') {
+                data = window.optionsData.dropFuses.map(item => ({ id: item, text: item }));
+                transformerSizeContainer.classList.add('hidden');
+            } else if (protectionEquipment === 'เบรกเกอร์') {
+                data = window.optionsData.breakers.map(item => ({ id: item, text: item }));
+                transformerSizeContainer.classList.add('hidden');
+            }
+            transformerPEASelect.select2({ data: data, placeholder: "พิมพ์เพื่อค้นหา", allowClear: true });
+        } else {
+            transformerPEAContainer.classList.add('hidden');
+            transformerSizeContainer.classList.add('hidden');
+            transformerPEASelect.val(null).trigger('change');
+            document.getElementById('transformerSize').value = '';
+            document.getElementById('location').value = '';
+        }
+    }
+
+    function onTransformerPEAChange() {
+        const transformerPEA = $('#transformerPEA').val();
+        const locationInput = document.getElementById('location');
+        const sizeInput = document.getElementById('transformerSize');
+
+        if (transformerPEA && window.optionsData && window.optionsData.transformerPEAs.includes(transformerPEA)) {
+            locationInput.value = window.optionsData.transformerLocations[transformerPEA] || '';
+            sizeInput.value = window.optionsData.transformerSizes[transformerPEA] || '';
+        } else {
+            locationInput.value = '';
+            sizeInput.value = '';
+        }
+    }
+
+    document.getElementById('addNewTransformerBtn').addEventListener('click', function() {
+        const protectionEquipment = document.getElementById('protectionEquipment').value;
+        if (protectionEquipment !== 'หม้อแปลง') return;
+
+        Swal.fire({
+            title: 'เพิ่มหม้อแปลงใหม่',
+            html: `
+                <input id="newTransformerPEA" class="swal2-input" placeholder="รหัส PEA (เช่น 59-123456)" pattern="\\d{2}-\\d+" required>
+                <input id="newLocation" class="swal2-input" placeholder="สถานที่" required>
+                <input id="newSize" class="swal2-input" placeholder="ขนาดหม้อแปลง (เช่น 100 kVA)">
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const peaCode = document.getElementById('newTransformerPEA').value.trim();
+                const location = document.getElementById('newLocation').value.trim();
+                const size = document.getElementById('newSize').value.trim();
+                if (!peaCode || !location || !/^\d{2}-\d+$/.test(peaCode)) {
+                    Swal.showValidationMessage('กรุณากรอกรหัส PEA ให้ถูกต้อง (เช่น 59-123456) และข้อมูลให้ครบ');
+                    return false;
+                }
+                return { peaCode, location, size };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const { peaCode, location, size } = result.value;
+                loading.classList.remove('hidden');
+                const formData = { transformerPEA: peaCode, location: location, transformerSize: size };
+                google.script.run
+                    .withSuccessHandler(response => {
+                        loading.classList.add('hidden');
+                        if (response.success) {
+                            Swal.fire('สำเร็จ', 'เพิ่มหม้อแปลงใหม่เรียบร้อย', 'success');
+                            const transformerPEASelect = $('#transformerPEA');
+                            transformerPEASelect.append(new Option(peaCode, peaCode, true, true)).trigger('change');
+                            window.optionsData.transformerPEAs.push(peaCode);
+                            window.optionsData.transformerLocations[peaCode] = location;
+                            window.optionsData.transformerSizes[peaCode] = size;
+                            document.getElementById('location').value = location;
+                            document.getElementById('transformerSize').value = size;
+                        } else {
+                            Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        loading.classList.add('hidden');
+                        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาด: ' + error.message, 'error');
+                    })
+                    .submitPowerOutageData(formData);
+            }
+        });
+    });
+
+    const phaseButtons = document.querySelectorAll('.phase-btn');
+    const selectedPhasesInput = document.getElementById('selectedPhases');
+    phaseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            this.classList.toggle('bg-blue-500');
+            this.classList.toggle('text-white');
+            const selected = Array.from(phaseButtons)
+                .filter(btn => btn.classList.contains('bg-blue-500'))
+                .map(btn => btn.getAttribute('data-phase'))
+                .join('-');
+            selectedPhasesInput.value = selected;
+        });
+    });
+
+    const weatherSelect = document.getElementById('weatherCondition');
+    const weatherOther = document.getElementById('weatherOther');
+    weatherSelect.addEventListener('change', function() {
+        weatherOther.classList.toggle('hidden', this.value !== 'อื่นๆ');
+        weatherOther.required = this.value === 'อื่นๆ';
+        if (this.value !== 'อื่นๆ') weatherOther.value = '';
+    });
+
+    const causeSelect = document.getElementById('cause');
+    const causeOther = document.getElementById('causeOther');
+    causeSelect.addEventListener('change', function() {
+        causeOther.classList.toggle('hidden', this.value !== 'อื่นๆ');
+        causeOther.required = this.value === 'อื่นๆ';
+        if (this.value !== 'อื่นๆ') causeOther.value = '';
+    });
+
+    document.getElementById('recordLimit').addEventListener('change', function() {
+        fetchRecords(this.value);
+    });
+
+    document.getElementById('powerOutageForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!this.checkValidity()) {
+            Swal.fire('คำเตือน', 'กรุณากรอกข้อมูลให้ครบทุกช่อง', 'warning');
+            return;
+        }
+
+        const equipmentRows = document.querySelectorAll('#equipmentContainer .equipment-row');
+        const equipmentDetails = Array.from(equipmentRows)
+            .filter(row => row.querySelector('.equipment-type').value)
+            .map(row => {
+                const type = row.querySelector('.equipment-type').value;
+                if (type === 'อื่นๆ') {
+                    const other = row.querySelector('.equipment-other').value;
+                    const otherQuantity = row.querySelector('.equipment-other-quantity').value || 1;
+                    const otherUnit = row.querySelector('.equipment-other-unit').value || '';
+                    return other ? `${other} = ${otherQuantity} ${otherUnit}`.trim() : '';
+                }
+                const unit = row.querySelector('.equipment-type').selectedOptions[0].dataset.unit || '';
+                const quantity = row.querySelector('.equipment-quantity').value || 1;
+                return `${type} = ${quantity} ${unit}`.trim();
+            })
+            .filter(item => item)
+            .join(', ');
+
+        if (!equipmentDetails) {
+            Swal.fire('คำเตือน', 'กรุณาเลือกอุปกรณ์ที่ใช้อย่างน้อย 1 รายการ', 'warning');
+            return;
+        }
+
+        if (!notesInput.value) {
+            Swal.fire('คำเตือน', 'กรุณาเลือกหมายเหตุ', 'warning');
+            return;
+        }
+
+        if (!selectedPhasesInput.value) {
+            Swal.fire('คำเตือน', 'กรุณาเลือกเฟสอย่างน้อย 1 เฟส', 'warning');
+            return;
+        }
+
+        const incidentDate = document.getElementById('incidentDate').value;
+        function combineDateTime(date, time) {
+            if (!date || !time) return '';
+            return `${date}T${time}:00`;
+        }
+
+        const protection = document.getElementById('protectionEquipment').value;
+        const transformerPEA = $('#transformerPEA').val();
+        const phases = selectedPhasesInput.value;
+        const weather = weatherSelect.value === 'อื่นๆ' ? weatherOther.value : weatherSelect.value;
+        const cause = causeSelect.value === 'อื่นๆ' ? causeOther.value : causeSelect.value;
+
+        const formData = {
+            outageStartTime: combineDateTime(incidentDate, document.getElementById('outageStartTime').value),
+            powerRestoreTime: combineDateTime(incidentDate, document.getElementById('powerRestoreTime').value),
+            officeReturnTime: combineDateTime(incidentDate, document.getElementById('officeReturnTime').value),
+            location: document.getElementById('location').value,
+            protectionEquipment: protection,
+            transformerPEA: transformerPEA,
+            cause: cause,
+            phase: phases,
+            equipmentDetails: equipmentDetails,
+            operator: document.getElementById('operator').value,
+            weatherCondition: weather,
+            notes: notesInput.value,
+            transformerSize: document.getElementById('transformerSize').value
+        };
+
+        Swal.fire({
+            title: 'ยืนยันการบันทึกข้อมูล?',
+            html: `
+                <strong>⚡ รายละเอียดการบันทึกไฟฟ้าขัดข้อง ⚡</strong><br>
+                📅 วันที่: ${formatThaiDateShort(new Date(formData.outageStartTime))}<br>
+                ⏰ เวลาไฟดับ: ${new Date(formData.outageStartTime).toLocaleTimeString('th-TH')}<br>
+                🔌 เวลาจ่ายไฟ: ${new Date(formData.powerRestoreTime).toLocaleTimeString('th-TH')}<br>
+                🏢 เวลาถึงสำนักงาน: ${new Date(formData.officeReturnTime).toLocaleTimeString('th-TH')}<br>
+                ⚡ อุปกรณ์ป้องกัน: ${formData.protectionEquipment}${formData.transformerPEA ? ` (${formData.transformerPEA}${formData.transformerSize ? ', ' + formData.transformerSize : ''})` : ''}<br>
+                📍 สถานที่: ${formData.location}<br>
+                🌩️ สภาพอากาศ: ${formData.weatherCondition}<br>
+                👷 ผู้ปฏิบัติงาน: ${formData.operator}<br>
+                🔧 อุปกรณ์: ${formData.equipmentDetails.split(', ').map((item, index) => `${index + 1}. ${item}`).join('<br>')}<br>
+                📝 สาเหตุ: ${formData.cause}<br>
+                ⚡ เฟส: ${formData.phase}<br>
+                📋 หมายเหตุ: ${formData.notes}<br>
+                📌 เลขใบสั่ง: ยังไม่ระบุ
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'บันทึกข้อมูล',
+            cancelButtonText: 'ยกเลิก',
+            width: '600px'
+        }).then(result => {
+            if (result.isConfirmed) {
+                loading.classList.remove('hidden');
+                google.script.run
+                    .withSuccessHandler(response => {
+                        loading.classList.add('hidden');
+                        if (response.success) {
+                            Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success').then(() => {
+                                formPage.classList.add('hidden');
+                                listPage.classList.remove('hidden');
+                                fetchRecords(document.getElementById('recordLimit').value, filterMonth.value, filterYear.value);
+                            });
+                        } else {
+                            Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        loading.classList.add('hidden');
+                        Swal.fire('ข้อผิดพลาด', error.message, 'error');
+                    })
+                    .submitPowerOutageData(formData);
+            }
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('edit-order-btn')) {
+            const id = e.target.getAttribute('data-id');
+            Swal.fire({
+                title: 'กรอกเลขใบสั่ง',
+                input: 'text',
+                inputLabel: 'เลขใบสั่ง',
+                inputPlaceholder: 'กรอกเลขใบสั่งที่นี่',
+                showCancelButton: true,
+                confirmButtonText: 'บันทึก',
+                cancelButtonText: 'ยกเลิก'
+            }).then(orderResult => {
+                if (orderResult.isConfirmed && orderResult.value) {
+                    loading.classList.remove('hidden');
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            loading.classList.add('hidden');
+                            if (response.success) {
+                                const cell = document.querySelector(`.order-number-cell[data-id="${id}"]`);
+                                if (cell) cell.innerHTML = orderResult.value;
+                                const mobileCell = document.querySelector(`.order-number-${id}`);
+                                if (mobileCell) {
+                                    mobileCell.textContent = orderResult.value;
+                                    const btn = mobileCell.parentElement.nextElementSibling;
+                                    if (btn && btn.classList.contains('edit-order-btn')) btn.remove();
+                                }
+                                pendingCountElement.textContent = parseInt(pendingCountElement.textContent) - 1;
+                                Swal.fire('สำเร็จ', response.message, 'success');
+                            } else {
+                                Swal.fire('ข้อผิดพลาด', response.message, 'error');
+                            }
+                        })
+                        .withFailureHandler(error => {
+                            loading.classList.add('hidden');
+                            Swal.fire('ข้อผิดพลาด', error.message, 'error');
+                        })
+                        .updateOrderNumber(parseInt(id), orderResult.value.trim());
+                }
+            });
+        }
+    });
+
+   // Dashboard Functions
+    const chartColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#f8f9fc'];
+
+    function updateStatistics(data) {
+        document.getElementById('totalIncidents').textContent = data.length;
+        const responseTimes = data.map(record => calculateDuration(record.outageStartTime, record.powerRestoreTime)).filter(t => t !== null);
+        document.getElementById('avgResponseTime').textContent = responseTimes.length ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : 0;
+        document.getElementById('pendingOrders').textContent = data.filter(r => !r.orderNumber).length;
+        document.getElementById('transformerIssues').textContent = data.filter(r => r.protectionEquipment === 'หม้อแปลง').length;
+    }
+
+    function createChart(ctx, type, labels, data, label) {
+        return new Chart(ctx, {
+            type: 'bar', // ใช้ 'bar' เสมอ
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: chartColors.slice(0, labels.length),
+                    borderColor: chartColors.slice(0, labels.length).map(c => c.replace('0.2', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: type === 'horizontal' ? 'y' : 'x',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: type === 'pie' } },
+                scales: {
+                    [type === 'horizontal' ? 'x' : 'y']: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function createCauseChart(data) {
+        const causes = {};
+        data.forEach(r => causes[r.cause] = (causes[r.cause] || 0) + 1);
+        const ctx = document.getElementById('causeChart').getContext('2d');
+        if (causeChart) causeChart.destroy();
+        causeChart = createChart(ctx, 'pie', Object.keys(causes), Object.values(causes), 'สาเหตุ');
+    }
+
+    function createHighVoltageChart(data) {
+        const equipment = {};
+        data.forEach(r => {
+            if (r.protectionEquipment !== 'หม้อแปลง') {
+                equipment[r.protectionEquipment || 'ไม่ระบุ'] = (equipment[r.protectionEquipment || 'ไม่ระบุ'] || 0) + 1;
+            }
+        });
+        const ctx = document.getElementById('highVoltageChart').getContext('2d');
+        if (highVoltageChart) highVoltageChart.destroy();
+        highVoltageChart = createChart(ctx, 'bar', Object.keys(equipment), Object.values(equipment), 'อุปกรณ์แรงสูง');
+    }
+
+    function createTransformerChart(data) {
+        const transformers = {};
+        data.forEach(r => {
+            if (r.protectionEquipment === 'หม้อแปลง' && r.transformerPEA) {
+                transformers[r.transformerPEA] = (transformers[r.transformerPEA] || 0) + 1;
+            }
+        });
+        const ctx = document.getElementById('transformerChart').getContext('2d');
+        if (transformerChart) transformerChart.destroy();
+        transformerChart = createChart(ctx, 'horizontal', Object.keys(transformers), Object.values(transformers), 'หม้อแปลง');
+    }
+
+    function createUsedEquipmentChart(data) {
+        const usedEquipment = {};
+        data.forEach(r => {
+            if (r.equipmentDetails) {
+                r.equipmentDetails.split(', ').forEach(item => {
+                    const key = item.split(' = ')[0];
+                    usedEquipment[key] = (usedEquipment[key] || 0) + 1;
+                });
+            }
+        });
+        const ctx = document.getElementById('usedEquipmentChart').getContext('2d');
+        if (usedEquipmentChart) usedEquipmentChart.destroy();
+        usedEquipmentChart = createChart(ctx, 'horizontal', Object.keys(usedEquipment), Object.values(usedEquipment), 'อุปกรณ์ที่ใช้');
+    }
+
+    function createPhaseChart(data) {
+        const phasesCount = { 'A': 0, 'B': 0, 'C': 0 };
+        data.forEach(record => {
+            if (record.phase) {
+                const phases = record.phase.split('-');
+                phases.forEach(phase => {
+                    if (phasesCount[phase] !== undefined) {
+                        phasesCount[phase] += 1;
+                    }
+                });
+            }
+        });
+        const ctx = document.getElementById('phaseChart').getContext('2d');
+        if (phaseChart) phaseChart.destroy();
+        phaseChart = createChart(ctx, 'bar', ['A', 'B', 'C'], [phasesCount['A'], phasesCount['B'], phasesCount['C']], 'เฟสที่เกิดเหตุ');
+    }
+
+    function createWeatherChart(data) {
+        const weather = {};
+        data.forEach(r => weather[r.weatherCondition] = (weather[r.weatherCondition] || 0) + 1);
+        const ctx = document.getElementById('weatherChart').getContext('2d');
+        if (weatherChart) weatherChart.destroy();
+        weatherChart = createChart(ctx, 'bar', Object.keys(weather), Object.values(weather), 'สภาพอากาศ');
+    }
+
+    function createNotesChart(data) {
+        const notes = {};
+        data.forEach(r => notes[r.notes] = (notes[r.notes] || 0) + 1);
+        const ctx = document.getElementById('notesChart').getContext('2d');
+        if (notesChart) notesChart.destroy();
+        notesChart = createChart(ctx, 'bar', Object.keys(notes), Object.values(notes), 'หมายเหตุ');
+    }
+
+    function createOperatorChart(data) {
+        const operators = {};
+        data.forEach(r => operators[r.operator] = (operators[r.operator] || 0) + 1);
+        const ctx = document.getElementById('operatorChart').getContext('2d');
+        if (operatorChart) operatorChart.destroy();
+        operatorChart = createChart(ctx, 'bar', Object.keys(operators), Object.values(operators), 'ผู้ปฏิบัติงาน');
+    }
+
+    function updateRecentIncidentsTable(data) {
+        const tbody = document.getElementById('incidentsTableBody');
+        tbody.innerHTML = '';
+        if (!data || data.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="8" class="text-center py-4">ไม่มีข้อมูลล่าสุด</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+        data.slice(0, 10).forEach((r, i) => {
+            const protectionDisplay = r.protectionEquipment === 'หม้อแปลง' && r.transformerPEA 
+                ? `${r.protectionEquipment} (${r.transformerPEA}${r.transformerSize ? ', ' + r.transformerSize : ''})` 
+                : r.protectionEquipment || '-';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${formatThaiDate(r.outageStartTime)}</td>
+                <td>${formatTime(r.outageStartTime)}</td>
+                <td>${formatTime(r.powerRestoreTime)}</td>
+                <td>${r.location || '-'}</td>
+                <td>${protectionDisplay}</td>
+                <td>${r.cause || '-'}</td>
+                <td>${r.operator || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function loadDashboardData() {
+        loading.classList.remove('hidden');
+        console.log('Starting to load dashboard data...');
+        google.script.run
+            .withSuccessHandler(response => {
+                loading.classList.add('hidden');
+                console.log('Response from getAllRecords:', response);
+                if (response.success) {
+                    dashboardData = response.records || [];
+                    console.log('Dashboard data length:', dashboardData.length);
+                    if (dashboardData.length === 0) {
+                        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับแสดงใน Dashboard', 'info');
+                    }
+
+                    try { updateStatistics(dashboardData); } catch (error) { console.error('Error in updateStatistics:', error); }
+                    try { createCauseChart(dashboardData); } catch (error) { console.error('Error in createCauseChart:', error); }
+                    try { createHighVoltageChart(dashboardData); } catch (error) { console.error('Error in createHighVoltageChart:', error); }
+                    try { createTransformerChart(dashboardData); } catch (error) { console.error('Error in createTransformerChart:', error); }
+                    try { createUsedEquipmentChart(dashboardData); } catch (error) { console.error('Error in createUsedEquipmentChart:', error); }
+                    try { createPhaseChart(dashboardData); } catch (error) { console.error('Error in createPhaseChart:', error); }
+                    try { createWeatherChart(dashboardData); } catch (error) { console.error('Error in createWeatherChart:', error); }
+                    try { createNotesChart(dashboardData); } catch (error) { console.error('Error in createNotesChart:', error); }
+                    try { createOperatorChart(dashboardData); } catch (error) { console.error('Error in createOperatorChart:', error); }
+                    try { updateRecentIncidentsTable(dashboardData); } catch (error) { console.error('Error in updateRecentIncidentsTable:', error); }
+                } else {
+                    console.error('Error in response:', response.message);
+                    Swal.fire('ข้อผิดพลาด', response.message || 'ไม่สามารถโหลดข้อมูลได้', 'error');
+                    updateStatistics([]);
+                    createCauseChart([]);
+                    createHighVoltageChart([]);
+                    createTransformerChart([]);
+                    createUsedEquipmentChart([]);
+                    createPhaseChart([]);
+                    createWeatherChart([]);
+                    createNotesChart([]);
+                    createOperatorChart([]);
+                    updateRecentIncidentsTable([]);
+                }
+            })
+            .withFailureHandler(error => {
+                loading.classList.add('hidden');
+                console.error('Failure in google.script.run:', error);
+                
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message, 'error');
+                updateStatistics([]);
+                createCauseChart([]);
+                createHighVoltageChart([]);
+                createTransformerChart([]);
+                createUsedEquipmentChart([]);
+                createPhaseChart([]);
+                createWeatherChart([]);
+                createNotesChart([]);
+                createOperatorChart([]);
+                updateRecentIncidentsTable([]);
+            })
+            .getAllRecords(null, dashFilterMonth.value || null, dashFilterYear.value || null);
+    }
+
+    document.getElementById('dashApplyFilter').addEventListener('click', function() {
+        loadDashboardData();
+    });
+
+    document.getElementById('pendingOrdersCard').addEventListener('click', () => {
+        dashboardPage.classList.add('hidden');
+        listPage.classList.remove('hidden');
+        fetchRecords(document.getElementById('recordLimit').value, filterMonth.value, filterYear.value, false, true);
+    });
+
+    document.getElementById('transformerIssuesCard').addEventListener('click', () => {
+        dashboardPage.classList.add('hidden');
+        listPage.classList.remove('hidden');
+        fetchRecords(document.getElementById('recordLimit').value, filterMonth.value, filterYear.value, false, false, true);
+    });
+
+    // Initialize page visibility based on login state
+    if (!isLoggedIn) {
+        formPage.classList.remove('hidden');
+        listPage.classList.add('hidden');
+        dashboardPage.classList.add('hidden');
+    } else {
+        formPage.classList.add('hidden');
+        listPage.classList.remove('hidden');
+        dashboardPage.classList.add('hidden');
+        fetchRecords(document.getElementById('recordLimit').value, filterMonth.value, filterYear.value);
+    }
+
+    
+    // Ensure transformerPEA is cleared if not applicable
+    document.getElementById('protectionEquipment').addEventListener('change', function() {
+        onProtectionEquipmentChange();
+        if (this.value !== 'หม้อแปลง') {
+            document.getElementById('transformerPEA').value = '';
+            document.getElementById('location').value = '';
+            document.getElementById('transformerSize').value = '';
+        }
+    });
+
+    // Prevent form submission if required fields are empty
+    document.getElementById('powerOutageForm').addEventListener('submit', function(e) {
+        const protection = document.getElementById('protectionEquipment').value;
+        const transformerPEA = document.getElementById('transformerPEA').value;
+        if (protection === 'หม้อแปลง' && !transformerPEA) {
+            e.preventDefault();
+            Swal.fire('คำเตือน', 'กรุณากรอกรหัส PEA หม้อแปลงเมื่อเลือกอุปกรณ์ป้องกันเป็นหม้อแปลง', 'warning');
+        }
+    });
+
+   document.getElementById('dashApplyFilter').addEventListener('click', loadDashboardData);
+    </script>
+</body>
+</html>
