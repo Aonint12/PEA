@@ -1,0 +1,308 @@
+const SPREADSHEET_ID = '1N_3WJcksqI2OsYgS8R7nQecT4TMXgZF7maXz0L5GgSA';
+const WEBEX_BOT_TOKEN = 'YmVlMTdmYmQtZjNjYS00Y2IzLWI3OGYtNGEyZGU3YjBjZmJiN2NlNGNhNjgtOWJm_P0A1_63808cdd-7608-4991-8f79-b2df9bee232a';
+const WEBEX_ROOM_ID = 'Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vZWFlNzBmNjAtMDMwMC0xMWYwLWJhYTctNzUyYmUwMzVkMDFm';
+const DRIVE_FOLDER_ID = '1HEZskLQOhiG-pUwTt434YvP4LXfV3JZ1';
+
+function doGet() {
+  const html = HtmlService.createTemplateFromFile('Index');
+  return html.evaluate()
+    .setTitle('บันทึกการแก้ไฟฟ้าขัดข้อง กฟส.วัดสิงห์')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
+    .setFaviconUrl('https://cdn.jsdelivr.net/gh/Aonint12/images/PEA114.png')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getOptions() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const equipmentSheet = ss.getSheetByName('อุปกรณ์');
+    const optionsSheet = ss.getSheetByName('ตัวเลือก');
+    const transformerSheet = ss.getSheetByName('Transformers');
+    
+    if (!equipmentSheet) throw new Error('ไม่พบชีท "อุปกรณ์"');
+    if (!optionsSheet) throw new Error('ไม่พบชีท "ตัวเลือก"');
+    if (!transformerSheet) throw new Error('ไม่พบชีท "Transformers"');
+    
+    const equipmentData = equipmentSheet.getDataRange().getValues();
+    const equipmentTypes = [];
+    const equipmentUnits = {};
+    const equipmentCodes = {};
+    for (let i = 1; i < equipmentData.length; i++) {
+      if (equipmentData[i][0]) {
+        equipmentTypes.push(equipmentData[i][0]);
+        equipmentUnits[equipmentData[i][0]] = equipmentData[i][3] || 'ชิ้น'; // คอลัมน์ D (หน่วย)
+        equipmentCodes[equipmentData[i][0]] = equipmentData[i][4] || ''; // คอลัมน์ E (รหัส)
+      }
+    }
+    
+    const optionsData = optionsSheet.getDataRange().getValues();
+    const protectionEquipment = ['หม้อแปลง/แรงต่ำ', 'ดรอพเอาท์ฟิวส์', 'เบรคเกอร์,รีโคลสเซอร์'];
+    const operators = [];
+    const causes = [];
+    const weatherConditions = [];
+    for (let i = 1; i < optionsData.length; i++) {
+      if (optionsData[i][0] && !causes.includes(optionsData[i][0])) causes.push(optionsData[i][0]);
+      if (optionsData[i][1] && !weatherConditions.includes(optionsData[i][1])) weatherConditions.push(optionsData[i][1]);
+      if (optionsData[i][2] && !operators.includes(optionsData[i][2])) operators.push(optionsData[i][2]);
+    }
+    
+    const transformerData = transformerSheet.getDataRange().getValues();
+    const transformerPEAs = [];
+    const dropFuses = [];
+    const breakers = [];
+    const transformerSizes = {};
+    const transformerLocations = {};
+    for (let i = 1; i < transformerData.length; i++) {
+      if (transformerData[i][0]) {
+        transformerPEAs.push(transformerData[i][0]);
+        transformerSizes[transformerData[i][0]] = transformerData[i][2] || '';
+        transformerLocations[transformerData[i][0]] = transformerData[i][1] || '';
+      }
+      if (transformerData[i][3]) dropFuses.push(transformerData[i][3]);
+      if (transformerData[i][4]) breakers.push(transformerData[i][4]);
+    }
+    
+    return {
+      success: true,
+      equipmentTypes: equipmentTypes,
+      equipmentUnits: equipmentUnits,
+      equipmentCodes: equipmentCodes,
+      protectionEquipment: protectionEquipment,
+      equipmentOperations: ['Trip Lock', 'Trip Reclose'],
+      operators: operators,
+      causes: causes,
+      weatherConditions: weatherConditions,
+      transformerPEAs: transformerPEAs,
+      dropFuses: dropFuses,
+      breakers: breakers,
+      transformerSizes: transformerSizes,
+      transformerLocations: transformerLocations
+    };
+  } catch (error) {
+    Logger.log('Error in getOptions: ' + error.toString());
+    return { success: false, message: 'เกิดข้อผิดพลาดใน getOptions: ' + error.toString() };
+  }
+}
+
+function addNewTransformer(transformerData) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const transformerSheet = ss.getSheetByName('Transformers');
+    
+    const existingData = transformerSheet.getDataRange().getValues();
+    const exists = existingData.some(row => row[0] === transformerData.peaCode);
+    
+    if (exists) {
+      return { success: false, message: 'รหัสหม้อแปลงนี้มีอยู่แล้วในระบบ' };
+    }
+    
+    transformerSheet.appendRow([
+      transformerData.peaCode,
+      transformerData.location,
+      transformerData.size,
+      '', // dropFuse
+      ''  // breaker
+    ]);
+    
+    return { success: true, message: 'เพิ่มข้อมูลหม้อแปลงใหม่เรียบร้อย' };
+  } catch (error) {
+    Logger.log('Error in addNewTransformer: ' + error.toString());
+    return { success: false, message: 'เกิดข้อผิดพลาดใน addNewTransformer: ' + error.message };
+  }
+}
+function submitPowerOutageData(data) {
+  try {
+    Logger.log('submitPowerOutageData called with data: ' + JSON.stringify(data));
+    
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    Logger.log('Spreadsheet opened successfully');
+    
+    const sheet = ss.getSheetByName('DATA');
+    if (!sheet) {
+      throw new Error('ไม่พบชีท "DATA"');
+    }
+    Logger.log('DATA sheet found');
+    
+    const equipmentSheet = ss.getSheetByName('อุปกรณ์');
+    if (!equipmentSheet) {
+      throw new Error('ไม่พบชีท "อุปกรณ์"');
+    }
+    Logger.log('อุปกรณ์ sheet found');
+    
+    const timestamp = new Date();
+    Logger.log('Timestamp created: ' + timestamp);
+
+    // Handle no equipment case
+    let equipmentDetailsFormatted = data.equipmentDetails || 'ไม่มีการใช้อุปกรณ์';
+    Logger.log('Equipment details formatted: ' + equipmentDetailsFormatted);
+    
+    if (equipmentDetailsFormatted !== 'ไม่มีการใช้อุปกรณ์') {
+      Logger.log('Processing equipment stock update');
+      const equipmentItems = data.equipmentDetails.split(', ');
+      equipmentItems.forEach(item => {
+        const [codeAndName, qtyUnit] = item.split(' = ');
+        const name = codeAndName.split(')')[1]; // Extract name after the code
+        const qty = parseInt(qtyUnit.split(' ')[0]);
+        Logger.log('Processing equipment item: ' + name + ', Quantity: ' + qty);
+        
+        const stockData = equipmentSheet.getDataRange().getValues();
+        let found = false;
+        for (let i = 1; i < stockData.length; i++) {
+          if (stockData[i][0] === name) {
+            const newRemaining = stockData[i][2] - qty;
+            equipmentSheet.getRange(i + 1, 3).setValue(newRemaining);
+            Logger.log('Updated stock for ' + name + ': ' + newRemaining);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          Logger.log('Equipment item not found in stock: ' + name);
+        }
+      });
+    }
+
+    // จัดการรูปภาพ - แยกส่วนบันทึกรูปลง Drive
+    let solutionText = data.solution || '';
+    let imageFileId = null;
+    
+    if (data.solutionImageUrl) {
+      Logger.log('Processing solution image for Drive');
+      try {
+        const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+        Logger.log('Drive folder accessed: ' + DRIVE_FOLDER_ID);
+        
+        const base64Data = data.solutionImageUrl.split(',')[1];
+        const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/jpeg', `solution_${timestamp.toISOString()}.jpg`);
+        const file = folder.createFile(blob);
+        imageFileId = file.getId();
+        Logger.log('Image uploaded to Drive, File ID: ' + imageFileId);
+        
+        // เก็บข้อมูลลิงก์รูปเพื่อบันทึกลงชีท
+        solutionText += ` [Image: https://lh5.googleusercontent.com/d/${imageFileId}]`;
+      } catch (imageError) {
+        Logger.log('Error saving image to Drive: ' + imageError.toString());
+        // ยังคงทำงานต่อแม้จะมีข้อผิดพลาดในการบันทึกรูป
+      }
+    }
+
+    const equipmentCodes = data.equipmentCodes ? data.equipmentCodes.join(', ') : '';
+    Logger.log('Equipment codes: ' + equipmentCodes);
+
+    const rowData = [
+      timestamp, // A: วันที่
+      data.outageStartTime, // B: เวลาไฟดับ
+      data.powerRestoreTime, // C: เวลาจ่ายไฟ
+      data.officeReturnTime, // D: เวลากลับถึงสำนักงาน
+      data.location || '', // E: สถานที่เกิดเหตุ
+      data.protectionEquipment || '', // F: อุปกรณ์ป้องกัน
+      data.transformerPEA || '', // G: รหัสอุปกรณ์ป้องกัน
+      data.causeDetail ? `${data.cause} (${data.causeDetail})` : data.cause || '', // H: สาเหตุ (รายละเอียด)
+      data.phase || '', // I: เฟสที่เกิด
+      equipmentDetailsFormatted, // J: รายการอุปกรณ์ที่ใช้
+      data.operator || '', // K: ชื่อผู้ปฏิบัติงาน
+      data.weatherCondition || '', // L: สภาพอากาศ
+      data.notes || '', // M: ทรัพย์สิน
+      '', // N: เลขใบสั่ง (ไม่ได้ใช้)
+      data.transformerSize || '', // O: ขนาดหม้อแปลง
+      solutionText, // P: แนวทางแก้ไข พร้อมลิงก์รูปภาพใน Drive (ถ้ามี)
+      'REL', // Q: สถานะงาน (เริ่มต้นที่ REL)
+      data.equipmentOperation || '', // R: การทำงาน
+      data.currentPhaseA || '', // S: กระแสเฟส A
+      data.currentPhaseB || '', // T: กระแสเฟส B
+      data.currentPhaseC || '', // U: กระแสเฟส C
+      data.currentGround || '', // V: กระแส Ground
+      data.operationDistance || '' // W: ระยะทาง
+    ];
+
+    Logger.log('Appending row to sheet: ' + JSON.stringify(rowData));
+    sheet.appendRow(rowData);
+    Logger.log('Row appended successfully');
+
+    if (data.outageStartTime) {
+      Logger.log('Sending Webex notification');
+      // ส่งข้อมูลรูปภาพไปยังฟังก์ชัน sendWebexNotification แยกต่างหาก
+      sendWebexNotification(data, imageFileId);
+    }
+
+    Logger.log('submitPowerOutageData completed successfully');
+    return { success: true, message: 'บันทึกข้อมูลสำเร็จ' };
+
+  } catch (error) {
+    Logger.log('Error in submitPowerOutageData: ' + error.toString());
+    return { success: false, message: 'เกิดข้อผิดพลาดใน submitPowerOutageData: ' + error.toString() };
+  }
+}
+
+function sendWebexNotification(data, imageFileId) {
+  try {
+    Logger.log('sendWebexNotification called with data: ' + JSON.stringify(data));
+    
+    const causeDisplay = data.cause ? `${data.cause}${data.causeDetail ? ` (${data.causeDetail})` : ''}` : 'ไม่ระบุ';
+    
+    // แยกข้อความและรูปภาพออกจากกัน
+    let solutionText = data.solution || '';
+    const solutionDisplay = solutionText ? `\n🔧 แนวทางการแก้ไข: ${solutionText}` : '';
+    
+    // ส่วนของรูปภาพ - แยกการจัดการสำหรับ Webex
+    let imageMarkdown = '';
+    if (imageFileId) {
+      imageMarkdown = `\n\n📷 [ดูรูปภาพแนวทางการแก้ไข](https://lh5.googleusercontent.com/d/${imageFileId})`;
+      Logger.log('Adding image to Webex notification: ' + imageFileId);
+    }
+    
+    let equipmentOperationDetails = '';
+    if (data.protectionEquipment === 'เบรคเกอร์,รีโคลสเซอร์') {
+      equipmentOperationDetails = `
+🔌 การทำงาน: ${data.equipmentOperation || 'ไม่ระบุ'}
+⚡ กระแสเฟส A: ${data.currentPhaseA || '-'} A
+⚡ กระแสเฟส B: ${data.currentPhaseB || '-'} A
+⚡ กระแสเฟส C: ${data.currentPhaseC || '-'} A
+⚡ กระแส Ground: ${data.currentGround || '-'} A
+📏 ระยะทาง: ${data.operationDistance || '-'} กม.
+      `;
+    }
+
+    const message = `
+⚡ **แจ้งเตือนการบันทึกไฟฟ้าขัดข้องใหม่** ⚡
+📅 วันที่: ${Utilities.formatDate(new Date(data.outageStartTime), 'GMT+7', 'dd/MM/yyyy')}
+⏰ เวลาไฟดับ: ${Utilities.formatDate(new Date(data.outageStartTime), 'GMT+7', 'HH:mm')}
+🔌 เวลาจ่ายไฟ: ${Utilities.formatDate(new Date(data.powerRestoreTime), 'GMT+7', 'HH:mm')}
+🏢 เวลาถึงสำนักงาน: ${Utilities.formatDate(new Date(data.officeReturnTime), 'GMT+7', 'HH:mm')}
+⚡ อุปกรณ์ป้องกัน: ${data.protectionEquipment || 'ไม่ระบุ'}${data.transformerPEA ? ` (${data.transformerPEA}${data.transformerSize ? ', ' + data.transformerSize : ''})` : ''}
+📍 สถานที่: ${data.location || 'ไม่ระบุ'}
+🌩️ สภาพอากาศ: ${data.weatherCondition || 'ไม่ระบุ'}
+👷 ผู้ปฏิบัติงาน: ${data.operator || 'ไม่ระบุ'}
+🔧 อุปกรณ์: ${data.equipmentDetails ? data.equipmentDetails.split(', ').map((item, index) => `${index + 1}. ${item}`).join('\n') : 'ไม่ระบุ'}
+📝 สาเหตุ: ${causeDisplay}${solutionDisplay}
+⚡ เฟส: ${data.phase || 'ไม่ระบุ'}
+📋 ทรัพย์สิน: ${data.notes || 'ไม่ระบุ'}${equipmentOperationDetails}${imageMarkdown}
+    `;
+
+    const url = 'https://webexapis.com/v1/messages';
+    const payload = {
+      roomId: WEBEX_ROOM_ID,
+      markdown: message
+    };
+
+    const options = {
+      method: 'post',
+      headers: {
+        'Authorization': `Bearer ${WEBEX_BOT_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    Logger.log('Sending Webex notification to URL: ' + url);
+    const response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() === 200) {
+      Logger.log('Webex notification sent successfully');
+    } else {
+      Logger.log('Failed to send Webex notification: ' + response.getContentText());
+    }
+  } catch (error) {
+    Logger.log('Error sending Webex notification: ' + error.toString());
+  }
+}
